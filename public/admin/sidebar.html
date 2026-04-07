@@ -1,0 +1,30 @@
+<aside class="w-64 bg-gray-900 border-r border-gray-800 flex flex-col py-8 px-4 min-h-screen">
+  <div class="flex items-center space-x-2 mb-10">
+    <span class="text-cyan-400 text-2xl">⬡</span>
+    <span class="font-bold text-xl">Raise<span class="text-cyan-400">Net</span></span>
+  </div>
+  <nav class="flex-1">
+    <ul class="space-y-4">
+      <li>
+        <a href="/admin/dashboard.html" class="flex items-center px-3 py-2 rounded hover:bg-gray-800 font-semibold">
+          <span class="mr-2">📊</span> Overview
+        </a>
+      </li>
+      <li>
+        <a href="/admin/users.html" class="flex items-center px-3 py-2 rounded hover:bg-gray-800 font-semibold">
+          <span class="mr-2">👥</span> Users
+        </a>
+      </li>
+      <li>
+        <a href="/admin/projects.html" class="flex items-center px-3 py-2 rounded hover:bg-gray-800 font-semibold">
+          <span class="mr-2">📁</span> Projects
+        </a>
+      </li>
+    </ul>
+  </nav>
+  <div class="mt-10">
+    <button id="sidebar-logout-btn" class="block w-full text-cyan-400 hover:underline text-sm text-left">Logout</button>
+  </div>
+  <script src="/js/sidebar-logout.js"></script>
+  <script>if(window.setupSidebarLogout) window.setupSidebarLogout();</script>
+</aside>

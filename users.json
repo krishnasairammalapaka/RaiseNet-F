@@ -1,0 +1,12 @@
+[
+  {
+    "email": "admin@raisnet.com",
+    "password": "admin123",
+    "role": "admin"
+  },
+  {
+    "email": "user@raisnet.com",
+    "password": "user123",
+    "role": "customer"
+  }
+]

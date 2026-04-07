@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — RaiseNet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-text { background: linear-gradient(90deg,#6366f1,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex">
+  <!-- Sidebar -->
+  <div id="sidebar-container"></div>
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-h-screen">
+    <header class="bg-gray-900 border-b border-gray-800 px-8 py-4 flex items-center justify-between">
+      <h1 class="text-2xl font-extrabold gradient-text">Admin Dashboard</h1>
+      <span class="text-gray-400 text-sm">Welcome, admin! Manage the platform here.</span>
+    </header>
+    <section class="flex-1 p-8">
+      <h2 class="text-xl font-bold mb-4">All Projects</h2>
+      <form id="admin-add-project" class="mb-8 flex flex-wrap gap-4 items-end bg-gray-800 p-4 rounded-lg">
+        <input type="text" id="proj-title" placeholder="Title" required class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <input type="text" id="proj-creator" placeholder="Creator (email)" required class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <input type="number" id="proj-goal" placeholder="Goal" required class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <input type="text" id="proj-category" placeholder="Category" class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <input type="number" id="proj-days" placeholder="Days Left" class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <input type="text" id="proj-chain" placeholder="Chain" class="px-3 py-2 rounded border border-gray-700 bg-gray-900 text-gray-100 focus:outline-none focus:border-cyan-400" />
+        <button type="submit" class="bg-cyan-700 text-white px-6 py-2 rounded hover:bg-cyan-800 font-semibold">Add Project</button>
+        <span id="admin-proj-msg" class="text-sm ml-4"></span>
+      </form>
+      <div id="admin-overview" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+    </section>
+  </main>
+  <script src="/js/sidebar-logout.js"></script>
+  <script>
+    // Inject admin sidebar
+    fetch('/admin/sidebar.html')
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('sidebar-container').innerHTML = html;
+        if(window.setupSidebarLogout) window.setupSidebarLogout();
+      });
+    // Check session and role
+    if(window.checkSessionOrRedirect) window.checkSessionOrRedirect('admin');
+
+    async function loadAdminProjects() {
+      const grid = document.getElementById('admin-overview');
+      grid.innerHTML = '<div class="text-center text-gray-400">Loading projects...</div>';
+      try {
+        const res = await fetch('/api/projects?role=admin');
+        const { data } = await res.json();
+        if (!data.length) {
+          grid.innerHTML = '<div class="text-gray-400">No projects found.</div>';
+          return;
+        }
+        grid.innerHTML = data.map(project => `
+          <div class="bg-gray-900 rounded-xl p-6 shadow hover:shadow-cyan-900/30 transition flex flex-col">
+            <div class="flex justify-between items-center mb-2">
+              <span class="bg-cyan-900 text-cyan-400 px-2 py-0.5 rounded text-xs font-semibold">${project.chain||''}</span>
+              <span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-xs">${project.category||''}</span>
+            </div>
+            <h3 class="font-bold text-lg mb-1">${project.title}</h3>
+            <div class="text-xs text-gray-400 mb-2">by <code>${project.creator}</code></div>
+            <div class="mb-2">
+              <div class="w-full bg-gray-700 h-2 rounded">
+                <div class="bg-cyan-400 h-2 rounded" style="width:${project.goal?Math.round((project.raised / project.goal) * 100):0}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>$${project.raised?.toLocaleString()||0} raised</span>
+                <span>${project.goal?Math.round((project.raised / project.goal) * 100):0}%</span>
+              </div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-300 mb-2">
+              <span>🎯 $${project.goal?.toLocaleString()||0} goal</span>
+              <span>👥 ${project.backers||0} backers</span>
+              <span>⏳ ${project.days_left||0} days left</span>
+            </div>
+          </div>
+        `).join('');
+      } catch (e) {
+        grid.innerHTML = '<div class="text-center text-red-400">Failed to load projects.</div>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      loadAdminProjects();
+      const form = document.getElementById('admin-add-project');
+      if (form) {
+        form.addEventListener('submit', async function (e) {
+          e.preventDefault();
+          const title = document.getElementById('proj-title').value;
+          const creator = document.getElementById('proj-creator').value;
+          const goal = document.getElementById('proj-goal').value;
+          const category = document.getElementById('proj-category').value;
+          const days_left = document.getElementById('proj-days').value;
+          const chain = document.getElementById('proj-chain').value;
+          const msg = document.getElementById('admin-proj-msg');
+          msg.textContent = '';
+          try {
+            const res = await fetch('/api/projects', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title, creator, goal, category, days_left, chain, role: 'admin' })
+            });
+            const data = await res.json();
+            if (data.success) {
+              msg.textContent = 'Project added!';
+              msg.className = 'text-green-400 text-sm ml-4';
+              form.reset();
+              loadAdminProjects();
+            } else {
+              msg.textContent = data.error || 'Failed to add project.';
+              msg.className = 'text-red-400 text-sm ml-4';
+            }
+          } catch {
+            msg.textContent = 'Server error.';
+            msg.className = 'text-red-400 text-sm ml-4';
+          }
+        });
+      }
+    });
+  </script>
+</body>
+</html>

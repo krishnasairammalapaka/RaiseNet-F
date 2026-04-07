@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fund New Project — RaiseNet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    .gradient-text { background: linear-gradient(90deg,#6366f1,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen flex">
+  <!-- Sidebar -->
+  <div id="sidebar-container"></div>
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col min-h-screen">
+    <header class="bg-gray-900 border-b border-gray-800 px-8 py-4 flex items-center justify-between">
+      <h1 class="text-2xl font-extrabold gradient-text">Fund New Project</h1>
+      <span class="text-gray-400 text-sm">Browse and fund blockchain projects.</span>
+    </header>
+    <section class="flex-1 p-8">
+      <h2 class="text-xl font-bold mb-4">All Projects</h2>
+      <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Projects will be loaded here -->
+      </div>
+    </section>
+  </main>
+  <script>
+    // Inject sidebar.html into the sidebar-container
+    fetch('/customer/sidebar.html')
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById('sidebar-container').innerHTML = html;
+      });
+
+    async function loadProjects() {
+      const container = document.getElementById('projects-list');
+      container.innerHTML = '<div class="text-gray-400">Loading projects...</div>';
+      try {
+        const res = await fetch('/api/projects');
+        const { data } = await res.json();
+        if (!data.length) {
+          container.innerHTML = '<div class="text-gray-400">No projects found.</div>';
+          return;
+        }
+        container.innerHTML = data.map(project => `
+          <div class="bg-gray-900 rounded-xl p-6 shadow hover:shadow-cyan-900/30 transition flex flex-col">
+            <img src="${project.image || '/images/projects/default.jpg'}" alt="${project.title}" class="w-full h-36 object-cover rounded mb-3 border border-gray-800" onerror="this.onerror=null;this.src='/images/projects/default.jpg';">
+            <div class="flex justify-between items-center mb-2">
+              <span class="bg-cyan-900 text-cyan-400 px-2 py-0.5 rounded text-xs font-semibold">${project.chain}</span>
+              <span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-xs">${project.category}</span>
+            </div>
+            <h3 class="font-bold text-lg mb-1">${project.title}</h3>
+            <div class="text-xs text-gray-400 mb-2">by <code>${project.creator}</code></div>
+            <div class="mb-2">
+              <div class="w-full bg-gray-700 h-2 rounded">
+                <div class="bg-cyan-400 h-2 rounded" style="width:${Math.round((project.raised / project.goal) * 100)}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-gray-400 mt-1">
+                <span>$${project.raised.toLocaleString()} raised</span>
+                <span>${Math.round((project.raised / project.goal) * 100)}%</span>
+              </div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-300 mb-2">
+              <span>🎯 $${project.goal.toLocaleString()} goal</span>
+              <span>👥 ${project.backers} backers</span>
+              <span>⏳ ${project.daysLeft} days left</span>
+            </div>
+            <button class="border border-cyan-400 text-cyan-400 px-4 py-1 rounded hover:bg-cyan-900 mt-auto fund-btn">Fund Project</button>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<div class="text-red-400">Failed to load projects.</div>';
+      }
+    }
+    loadProjects();
+
+    // MetaMask integration for Fund Project
+    document.addEventListener('click', async function(e) {
+      if (e.target && e.target.classList.contains('fund-btn')) {
+        // Check for MetaMask
+        if (typeof window.ethereum === 'undefined') {
+          alert('MetaMask is not installed. Please install MetaMask to fund projects.');
+          return;
+        }
+        try {
+          // Request account access
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const from = accounts[0];
+          // Send minimal transaction (0.0001 ETH)
+          const tx = {
+            from,
+            to: from, // Replace with actual project wallet address if available
+            value: '0x38D7EA4C68000', // 0.001 ETH in hex wei
+            gasPrice: '0x3B9ACA00', // 1 Gwei (low gas price)
+          };
+          try {
+            const txHash = await window.ethereum.request({ method: 'eth_sendTransaction', params: [tx] });
+            if (txHash) {
+              alert('Transaction sent! Hash: ' + txHash + '\nCheck MetaMask for confirmation.');
+            } else {
+              alert('Transaction failed to send.');
+            }
+          } catch (err) {
+            alert('Transaction failed: ' + (err && err.message ? err.message : err));
+          }
+        } catch (err) {
+          alert('Transaction failed or cancelled.');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
